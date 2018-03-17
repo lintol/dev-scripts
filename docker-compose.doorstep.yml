@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  doorstep:
+    build:
+      context: ds
+      dockerfile: Dockerfile.doorstep
+    volumes:
+      - /doorstep:/doorstep
+      - /tmp:/tmp
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ltldoorstep
+    command:
+      - serve
+      - --engine
+      - docker:bind
+      - --protocol
+      - wamp
+      - --router
+      - $ROUTER:8080

@@ -1,0 +1,14 @@
+export LINTOL_SITE=dev.lintol.io
+export CKAN_SITE=ckan.dev.lintol.io
+export CKAN_PORT=5000
+export LINTOL_BLIND_INDEX_KEY=
+export CKAN_OAUTH2_KEY=
+export CKAN_USER=johndoe
+export CKAN_EMAIL=
+
+export GITHUB_CLIENT_ID=
+export GITHUB_CLIENT_SECRET=
+
+# These should be provided dynamically
+#export CKAN_CLIENT_ID=
+#export CKAN_CLIENT_SECRET=

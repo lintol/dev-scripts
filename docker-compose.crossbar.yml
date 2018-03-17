@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  crossbar:
+    image: crossbario/crossbar
+    ports:
+      - "8080:8080"
+    user: "1000"
+    volumes:
+      - ./crossbar-starter/crossbar:/node
