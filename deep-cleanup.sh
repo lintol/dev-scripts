@@ -4,4 +4,4 @@
 
 ./cleanup.sh
 
-sudo rm -rf capstone storage doorstep lintol-frontend
+sudo rm -rf capstone storage doorstep lintol-frontend crossbar-starter

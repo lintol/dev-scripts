@@ -8,52 +8,21 @@ volumes:
 
 services:
   crossbar:
-    image: crossbario/crossbar
+    build:
+      context: cb
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    user: "1000"
-    volumes:
-      - ./crossbar-starter/crossbar:/node
-    entrypoint:
-      - crossbar
-      - start
-      - --cbdir
-      - /node/.crossbar
-      - --loglevel
-      - debug
-
-  lintol_frontend:
-    image: node
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./lintol-frontend:/usr/src/app
-    working_dir: /usr/src/app
-    command:
-      - npm
-      - run
-      - dev
 
   doorstep:
     build:
       context: ds
       dockerfile: Dockerfile.doorstep
     volumes:
-      - /doorstep:/doorstep
       - /tmp:/tmp
       - /var/run/docker.sock:/var/run/docker.sock
-    entrypoint: ltldoorstep
     links:
       - crossbar:crossbar
-    command:
-      - serve
-      - --engine
-      - docker:bind
-      - --protocol
-      - wamp
-      - --router
-      - crossbar:8080
-    restart: unless-stopped
 
   ckan_worker:
     entrypoint: /usr/local/bin/ckan-paster
@@ -64,7 +33,9 @@ services:
       - -c
       - /etc/ckan/production.ini
     container_name: ckan_worker
-    image: ckan_local
+    build:
+      context: ck
+      dockerfile: Dockerfile.ckan
     links:
       - ckan_db
       - ckan_solr
@@ -84,16 +55,17 @@ services:
 
     volumes:
       - ckan_config:/etc/ckan
-      - ckan_home:/usr/lib/ckan
       - ckan_storage:/var/lib/ckan
 
   ckan:
     container_name: ckan
-    image: ckan_local
     links:
       - ckan_db
       - ckan_solr
       - ckan_redis
+    build:
+      context: ck
+      dockerfile: Dockerfile.ckan
     ports:
       - "0.0.0.0:${CKAN_PORT}:5000"
     environment:
@@ -111,7 +83,6 @@ services:
 
     volumes:
       - ckan_config:/etc/ckan
-      - ckan_home:/usr/lib/ckan
       - ckan_storage:/var/lib/ckan
 
   ckan_datapusher:
@@ -122,12 +93,7 @@ services:
 
   ckan_db:
     container_name: ckan_db
-    build:
-      context: ckan
-      dockerfile: contrib/docker/postgresql/Dockerfile
-      args:
-        - DS_RO_PASS=${DATASTORE_READONLY_PASSWORD}
-        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    image: ckan_local_postgresql
     environment:
       - DS_RO_PASS=${DATASTORE_READONLY_PASSWORD}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -136,10 +102,7 @@ services:
 
   ckan_solr:
     container_name: ckan_solr
-    build:
-      context: ckan
-      dockerfile: contrib/docker/solr/Dockerfile
-
+    image: ckan_solr
 
   ckan_redis:
     container_name: ckan_redis
@@ -153,6 +116,7 @@ services:
       PGDATA: /data
     env_file:
       - ./capstone/infrastructure/config/secrets/laravel.env
+
   capstone_phpfpm:
     build:
       context: ./capstone/infrastructure/containers/phpfpm
@@ -160,26 +124,20 @@ services:
     links:
       - capstone_db:db
       - capstone_redis:redis
-      - lintol_frontend:lintol_frontend
       - crossbar:crossbar
-    volumes:
-      - ./capstone:/data/www
-      - ./capstone:/var/www/app
-      - ./capstone/infrastructure/storage/phpfpm/xdebug:/tmp/xdebug
     env_file:
       - ./capstone/infrastructure/config/secrets/laravel.env
       - ./capstone/infrastructure/config/secrets/redis.env
     environment:
       REDIS_HOST: "redis"
       REDIS_PORT: 6379
-      LINTOL_FRONTEND_PROXY: http://lintol_frontend:8080/
       LINTOL_CAPSTONE_URL: ws://crossbar:8080/ws
-  capstone_nginx:
-    image: nginx:stable
     volumes:
-      - ./capstone/infrastructure/config/nginx/laravel:/etc/nginx/conf.d/default.conf
-      - ./capstone/infrastructure/certificates:/secrets
-      - ./capstone:/var/www/app
+      - ./capstone/storage/oauth-private.key:/var/www/app/storage/oauth-private.key
+      - ./capstone/storage/oauth-public.key:/var/www/app/storage/oauth-public.key
+
+  capstone_nginx:
+    image: 036345629021.dkr.ecr.eu-west-1.amazonaws.com/lintol:nginx-19068648
     env_file:
       - ./capstone/infrastructure/config/secrets/laravel.env
     ports:
@@ -188,11 +146,9 @@ services:
       - capstone_phpfpm:phpfpm
     environment:
       LARAVEL_ROOT: "/var/www/app"
+
   capstone_artisan_subscriber:
-    image: flaxandteal/docker-laravel-artisan:fpm-7.1.6
-    volumes:
-      - ./storage/artisan:/data/www
-      - ./capstone:/var/www/app
+    image: 036345629021.dkr.ecr.eu-west-1.amazonaws.com/lintol:artisan-19068648
     env_file:
       - ./capstone/infrastructure/config/secrets/laravel.env
       - ./capstone/infrastructure/config/secrets/redis.env
@@ -204,12 +160,12 @@ services:
       - capstone_redis:redis
     command:
       - "ltl:observe"
-    restart: unless-stopped
-  capstone_artisan_worker:
-    image: flaxandteal/docker-laravel-artisan:fpm-7.1.6
     volumes:
-      - ./storage/artisan:/data/www
-      - ./capstone:/var/www/app
+      - ./capstone/storage/oauth-private.key:/var/www/app/storage/oauth-private.key
+      - ./capstone/storage/oauth-public.key:/var/www/app/storage/oauth-public.key
+
+  capstone_artisan_worker:
+    image: 036345629021.dkr.ecr.eu-west-1.amazonaws.com/lintol:artisan-19068648
     env_file:
       - ./capstone/infrastructure/config/secrets/laravel.env
       - ./capstone/infrastructure/config/secrets/redis.env
@@ -221,6 +177,10 @@ services:
       - capstone_redis:redis
     command:
       - "queue:work"
+    volumes:
+      - ./capstone/storage/oauth-private.key:/var/www/app/storage/oauth-private.key
+      - ./capstone/storage/oauth-public.key:/var/www/app/storage/oauth-public.key
+
   capstone_redis:
     image: redis
     env_file:

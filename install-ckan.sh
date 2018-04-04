@@ -11,7 +11,10 @@ echo
 git clone https://github.com/ckan/ckan.git ckan
 (cd ckan && git checkout -b release-v2.6-latest)
 
- docker build --build-arg CKAN_SITE_URL=${CKAN_SITE_URL} -t ckan_local ckan
+docker build --build-arg CKAN_SITE_URL=${CKAN_SITE_URL} -t ckan_local ckan
+docker build --build-arg DS_RO_PASS=${DATASTORE_READONLY_PASSWORD} --build-arg POSTGRES_PASSWORD=${POSTGRES_PASSWORD} -t ckan_local_postgresql -f ckan/contrib/docker/postgresql/Dockerfile ckan
+docker build -t ckan_solr -f ckan/contrib/docker/solr/Dockerfile ckan
+
 docker-compose -f docker-compose.ckan.yml up &
 sleep 10
 docker-compose -f docker-compose.ckan.yml stop
@@ -46,7 +49,7 @@ sudo bindfs --map=900/`whoami` $VOL_CKAN_HOME ./ckan-home
 sudo chown -R `whoami`:docker $VOL_CKAN_CONFIG
 sudo bindfs --map=900/`whoami` $VOL_CKAN_CONFIG ./ckan-config
 
-NEW_PLUGINS="datastore datapusher validation oauth2provider scheming_datasets"
+NEW_PLUGINS="scheming_datasets datastore datapusher validation oauth2provider"
 CKAN_INI=./ckan-config/production.ini
 
 docker-compose -f docker-compose.ckan.yml up &
@@ -74,7 +77,11 @@ cd ..
 
 git clone https://github.com/lintol/ckanext-validation.git
 cd ckanext-validation
+git checkout feature/lintol
+rm -rf ckanext/validation/fanstatic/vendor/lintol-reporting-ui
+git clone https://github.com/lintol/lintol-reporting-ui ckanext/validation/fanstatic/vendor/lintol-reporting-ui
 pip install -r requirements.txt
+pip install -r lintol-requirements.txt
 python setup.py install
 python setup.py develop
 cd ..

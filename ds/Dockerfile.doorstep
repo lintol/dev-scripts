@@ -4,3 +4,6 @@ USER root
 RUN groupadd -g 999 docker
 RUN usermod -aG docker doorstep
 USER doorstep
+
+ENTRYPOINT ltldoorstep
+CMD ['serve, '--engine', 'docker', '--protocol', 'wamp', '--router', 'crossbar:8080']

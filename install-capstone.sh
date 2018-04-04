@@ -24,6 +24,8 @@ then
     cd ..
 fi
 
+(cd capstone; git submodule init; git submodule update)
+
 (cd capstone; docker-compose up) &
 sleep 5
 (cd capstone; docker-compose stop)
@@ -78,6 +80,7 @@ LINTOL_CAPSTONE_URL=ws://${NETWORK_CAPSTONE_ROOT}:8080/ws
 CKAN_CLIENT_ID=
 CKAN_CLIENT_SECRET=
 CKAN_URL=https://$CKAN_SITE
+KEY_PATH=/var/www/app/secrets
     " > capstone/.env
 fi
 
@@ -95,6 +98,7 @@ then
     mv composer.phar composer
     cd ..
 fi
+cd capstone; mkdir secrets; cd ..
 cd capstone; ./composer install; cd ..
 
 (cd capstone; docker-compose run --entrypoint php artisan_worker /var/www/app/artisan --force migrate:refresh)
@@ -102,5 +106,6 @@ cd capstone; ./composer install; cd ..
 (cd capstone; docker-compose run --entrypoint php artisan_worker /var/www/app/artisan passport:install)
 (cd capstone; docker-compose run --entrypoint php artisan_worker /var/www/app/artisan key:generate)
 (cd capstone; docker-compose run --user root --entrypoint touch artisan_worker /var/www/app/storage/logs/laravel.log)
+(cd capstone; docker-compose run --user root --entrypoint /bin/sh artisan_worker -c 'mkdir /var/www/app/secrets; cp /var/www/app/storage/oauth-* /var/www/app/secrets')
 (cd capstone; docker-compose run --user root --entrypoint chown artisan_worker -R www-data /var/www/app/bootstrap/cache /var/www/app/storage)
 (cd capstone; docker-compose up) &

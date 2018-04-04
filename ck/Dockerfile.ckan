@@ -1,0 +1,14 @@
+FROM ckan_local
+
+COPY home/venv /usr/lib/ckan/venv
+
+USER root
+
+RUN rm -rf /usr/lib/ckan/venv/include
+RUN ln -s /usr/include/python2.7 /usr/lib/ckan/venv/include
+RUN mkdir -p ckan/venv/local
+RUN ln -s /usr/lib/ckan/venv/include ckan/venv/local/include
+RUN ln -s /usr/lib/ckan/venv/bin ckan/venv/local/bin
+RUN ln -s /usr/lib/ckan/venv/lib ckan/venv/local/lib
+
+USER ckan

@@ -8,3 +8,10 @@ services:
     user: "1000"
     volumes:
       - ./crossbar-starter/crossbar:/node
+    entrypoint:
+      - crossbar
+      - start
+      - --cbdir
+      - /node/.crossbar
+      - --loglevel
+      - debug
